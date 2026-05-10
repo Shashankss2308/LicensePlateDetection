@@ -10,3 +10,4 @@ torch
 torchvision
 
 timm==0.9.16
+pytorch-lightning==2.2.0
