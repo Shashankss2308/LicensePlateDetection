@@ -30,7 +30,7 @@ from PIL import Image
 import torch
 from torchvision import transforms as T
 
-from database import (
+from backend.database import (
     init_db,
     save_detection,
     get_all_detections,
