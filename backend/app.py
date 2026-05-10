@@ -135,11 +135,11 @@ def recognize_plate_parseq(plate_bgr):
         cv2.imwrite(temp_path, enhanced)
 
         # PARSeq API call
-        result = parseq_client.predict(
-            model_name="parseq",
-            image=handle_file(temp_path),
-            api_name="/App"
-        )
+        try:
+              result = parseq_client.predict("parseq", handle_file(temp_path), api_name="/App")
+        except Exception as api_error:
+              print(f"[PARSeq API ERROR] {api_error}")
+              return "OCR_FAILED", 0.0
 
         if result:
 
