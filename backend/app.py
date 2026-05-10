@@ -96,8 +96,11 @@ print("[PlateVision] ✓ PARSeq OCR Ready!")
 # PARSeq OCR FUNCTION
 # ─────────────────────────────────────────────────────────────
 def recognize_plate_parseq(plate_bgr):
-    temp_path = None  
+
+    temp_path = None
+
     try:
+
         # Upscale for better OCR
         plate_bgr = cv2.resize(
             plate_bgr,
@@ -108,7 +111,10 @@ def recognize_plate_parseq(plate_bgr):
         )
 
         # Convert grayscale
-        gray = cv2.cvtColor(plate_bgr, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(
+            plate_bgr,
+            cv2.COLOR_BGR2GRAY
+        )
 
         # CLAHE enhancement
         clahe = cv2.createCLAHE(
@@ -137,27 +143,36 @@ def recognize_plate_parseq(plate_bgr):
 
         if result:
 
-            # Extract only first OCR prediction
+            # Extract OCR text
             if isinstance(result, tuple):
+
                 text = result[0]
+
             elif isinstance(result, list):
+
                 text = result[0]
+
             else:
+
                 text = str(result)
 
             text = str(text).upper()
 
-            # Keep only plate characters
-            text = re.sub(r'[^A-Z0-9]', '', text)
+            # Keep only alphanumeric
+            text = re.sub(
+                r'[^A-Z0-9]',
+                '',
+                text
+            )
 
-            # Remove common unwanted words
+            # Remove unwanted words
             text = text.replace("IND", "")
             text = text.replace("LICENSE", "")
             text = text.replace("PLATE", "")
             text = text.replace("HEADERS", "")
             text = text.replace("DATA", "")
 
-            # Limit maximum length
+            # Limit length
             if len(text) > 10:
                 text = text[:10]
 
@@ -171,11 +186,10 @@ def recognize_plate_parseq(plate_bgr):
 
         return "", 0.0
 
-     finally:
+    finally:
 
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
-
 
 # ─────────────────────────────────────────────────────────────
 # STATIC ROUTES
