@@ -87,7 +87,7 @@ yolo = YOLO(MODEL_PATH)
 # ─────────────────────────────────────────────────────────────
 print("[PlateVision] Loading PARSeq OCR API...")
 
-parseq_client = Client("baudm/PARSeq-OCR", serialize=False)
+parseq_client = Client("baudm/PARSeq-OCR")
 
 print("[PlateVision] ✓ PARSeq OCR Ready!")
 
