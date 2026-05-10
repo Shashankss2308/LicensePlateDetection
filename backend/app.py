@@ -85,7 +85,7 @@ print("[PlateVision] Loading PARSeq model locally...")
 
 parseq = torch.hub.load(
     'baudm/parseq',
-    'parseq',
+    'parseq_tiny',
     pretrained=True,
     trust_repo=True
 ).eval().to(DEVICE)
