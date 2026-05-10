@@ -87,7 +87,7 @@ yolo = YOLO(MODEL_PATH)
 # ─────────────────────────────────────────────────────────────
 print("[PlateVision] Loading PARSeq OCR API...")
 
-parseq_client = Client("baudm/PARSeq-OCR")
+parseq_client = Client("baudm/PARSeq-OCR", serialize=False)
 
 print("[PlateVision] ✓ PARSeq OCR Ready!")
 
@@ -96,7 +96,7 @@ print("[PlateVision] ✓ PARSeq OCR Ready!")
 # PARSeq OCR FUNCTION
 # ─────────────────────────────────────────────────────────────
 def recognize_plate_parseq(plate_bgr):
-
+    temp_path = None  
     try:
         # Upscale for better OCR
         plate_bgr = cv2.resize(
@@ -135,9 +135,6 @@ def recognize_plate_parseq(plate_bgr):
             api_name="/App"
         )
 
-        # Delete temp file
-        os.remove(temp_path)
-
         if result:
 
             # Extract only first OCR prediction
@@ -173,6 +170,11 @@ def recognize_plate_parseq(plate_bgr):
         print(f"[PARSeq ERROR] {e}")
 
         return "", 0.0
+
+     finally:
+
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 # ─────────────────────────────────────────────────────────────
