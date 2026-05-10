@@ -13,22 +13,36 @@ Detected Plate Number
 Frontend Display
 """
 
+"""
+PlateVision AI — Backend v5 (Optimised)
+
+Pipeline per request:
+YOLO Detection
+      ↓
+Crop Plate
+      ↓
+PARSeq OCR API
+      ↓
+Detected Plate Number
+      ↓
+Frontend Display
+"""
+
 import os
 import re
 import time
 import base64
 import io
+import tempfile
 
 import cv2
 import numpy as np
 
 from flask import Flask, request, jsonify, send_from_directory
-
 from ultralytics import YOLO
 from PIL import Image
 
-import torch
-from torchvision import transforms as T
+from gradio_client import Client, handle_file
 
 from backend.database import (
     init_db,
@@ -63,61 +77,28 @@ app = Flask(
 init_db()
 
 # ─────────────────────────────────────────────────────────────
-# DEVICE
-# ─────────────────────────────────────────────────────────────
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-print(f"\n[PlateVision] Using Device: {DEVICE}")
-
-# ─────────────────────────────────────────────────────────────
 # YOLO MODEL
 # ─────────────────────────────────────────────────────────────
 print("[PlateVision] Loading YOLO model...")
-
 yolo = YOLO(MODEL_PATH)
 
-print("[PlateVision] ✓ YOLO Loaded!")
-
 # ─────────────────────────────────────────────────────────────
-# PARSeq MODEL
+# PARSeq OCR API
 # ─────────────────────────────────────────────────────────────
-print("[PlateVision] Loading PARSeq model locally...")
+print("[PlateVision] Loading PARSeq OCR API...")
 
-parseq = torch.hub.load(
-    'baudm/parseq',
-    'parseq_tiny',
-    pretrained=True,
-    trust_repo=True
-).eval().to(DEVICE)
+parseq_client = Client("baudm/PARSeq-OCR")
 
-print("[PlateVision] ✓ PARSeq Loaded!")
-
-# ─────────────────────────────────────────────────────────────
-# IMAGE PREPROCESS
-# ─────────────────────────────────────────────────────────────
-img_transform = T.Compose([
-    T.Resize(
-        (32, 128),
-        T.InterpolationMode.BICUBIC
-    ),
-    T.ToTensor(),
-    T.Normalize(0.5, 0.5)
-])
-
-print("\n[PlateVision] ✓ System Ready!\n")
+print("[PlateVision] ✓ PARSeq OCR Ready!")
 
 
 # ─────────────────────────────────────────────────────────────
-# OCR FUNCTION
+# PARSeq OCR FUNCTION
 # ─────────────────────────────────────────────────────────────
-@torch.inference_mode()
 def recognize_plate_parseq(plate_bgr):
 
     try:
-
-        # ─────────────────────────────────────────
-        # UPSCALE IMAGE
-        # ─────────────────────────────────────────
+        # Upscale for better OCR
         plate_bgr = cv2.resize(
             plate_bgr,
             None,
@@ -126,17 +107,10 @@ def recognize_plate_parseq(plate_bgr):
             interpolation=cv2.INTER_CUBIC
         )
 
-        # ─────────────────────────────────────────
-        # GRAYSCALE
-        # ─────────────────────────────────────────
-        gray = cv2.cvtColor(
-            plate_bgr,
-            cv2.COLOR_BGR2GRAY
-        )
+        # Convert grayscale
+        gray = cv2.cvtColor(plate_bgr, cv2.COLOR_BGR2GRAY)
 
-        # ─────────────────────────────────────────
-        # CLAHE ENHANCEMENT
-        # ─────────────────────────────────────────
+        # CLAHE enhancement
         clahe = cv2.createCLAHE(
             clipLimit=3.0,
             tileGridSize=(8, 8)
@@ -144,58 +118,55 @@ def recognize_plate_parseq(plate_bgr):
 
         enhanced = clahe.apply(gray)
 
-        # ─────────────────────────────────────────
-        # CONVERT TO PIL
-        # ─────────────────────────────────────────
-        pil_image = Image.fromarray(enhanced).convert('RGB')
+        # Save temporary image
+        with tempfile.NamedTemporaryFile(
+            suffix=".jpg",
+            delete=False
+        ) as temp:
 
-        # ─────────────────────────────────────────
-        # TRANSFORM
-        # ─────────────────────────────────────────
-        tensor = img_transform(
-            pil_image
-        ).unsqueeze(0).to(DEVICE)
+            temp_path = temp.name
 
-        # ─────────────────────────────────────────
-        # PREDICTION
-        # ─────────────────────────────────────────
-        pred = parseq(tensor).softmax(-1)
+        cv2.imwrite(temp_path, enhanced)
 
-        label, confidence = parseq.tokenizer.decode(pred)
-
-        text = label[0]
-
-        # ─────────────────────────────────────────
-        # CLEAN TEXT
-        # ─────────────────────────────────────────
-        text = text.upper()
-
-        text = re.sub(
-            r'[^A-Z0-9]',
-            '',
-            text
+        # PARSeq API call
+        result = parseq_client.predict(
+            model_name="parseq",
+            image=handle_file(temp_path),
+            api_name="/App"
         )
 
-        text = text.replace('IND', '')
+        # Delete temp file
+        os.remove(temp_path)
 
-        # Remove invalid long predictions
-        if len(text) > 12:
-            text = text[:12]
+        if result:
 
-        # ─────────────────────────────────────────
-        # CONFIDENCE
-        # ─────────────────────────────────────────
-        conf = 0.95
+            # Extract only first OCR prediction
+            if isinstance(result, tuple):
+                text = result[0]
+            elif isinstance(result, list):
+                text = result[0]
+            else:
+                text = str(result)
 
-        if confidence is not None:
-            try:
-                conf = float(
-                    torch.mean(confidence[0]).item()
-                )
-            except:
-                pass
+            text = str(text).upper()
 
-        return text, conf
+            # Keep only plate characters
+            text = re.sub(r'[^A-Z0-9]', '', text)
+
+            # Remove common unwanted words
+            text = text.replace("IND", "")
+            text = text.replace("LICENSE", "")
+            text = text.replace("PLATE", "")
+            text = text.replace("HEADERS", "")
+            text = text.replace("DATA", "")
+
+            # Limit maximum length
+            if len(text) > 10:
+                text = text[:10]
+
+            return text, 0.95
+
+        return "", 0.0
 
     except Exception as e:
 
@@ -209,20 +180,12 @@ def recognize_plate_parseq(plate_bgr):
 # ─────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
-
-    return send_from_directory(
-        FRONTEND_DIR,
-        'index.html'
-    )
+    return send_from_directory(FRONTEND_DIR, 'index.html')
 
 
 @app.route('/<path:filename>')
 def static_files(filename):
-
-    return send_from_directory(
-        FRONTEND_DIR,
-        filename
-    )
+    return send_from_directory(FRONTEND_DIR, filename)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -232,7 +195,6 @@ def static_files(filename):
 def detect():
 
     if 'image' not in request.files:
-
         return jsonify({
             'success': False,
             'error': 'No image provided.'
@@ -242,9 +204,7 @@ def detect():
 
     start_time = time.time()
 
-    # ─────────────────────────────────────────
-    # READ IMAGE
-    # ─────────────────────────────────────────
+    # Read image
     img_bytes = file.read()
 
     img_array = np.frombuffer(
@@ -258,7 +218,6 @@ def detect():
     )
 
     if img_bgr is None:
-
         return jsonify({
             'success': False,
             'error': 'Could not decode image.'
@@ -296,11 +255,11 @@ def detect():
     )
 
     # ─────────────────────────────────────────
-    # ASYMMETRIC PADDING
+    # PLATE CROP
     # ─────────────────────────────────────────
-    pad_l = 5
-    pad_t = 5
-    pad_r = 18
+    pad_l = 6
+    pad_t = 6
+    pad_r = 14
     pad_b = 10
 
     x1p = max(0, x1 - pad_l)
@@ -309,16 +268,10 @@ def detect():
     x2p = min(w, x2 + pad_r)
     y2p = min(h, y2 + pad_b)
 
-    # ─────────────────────────────────────────
-    # CROP PLATE
-    # ─────────────────────────────────────────
-    plate_crop = img_bgr[
-        y1p:y2p,
-        x1p:x2p
-    ]
+    plate_crop = img_bgr[y1p:y2p, x1p:x2p]
 
     # ─────────────────────────────────────────
-    # OCR
+    # PARSeq OCR
     # ─────────────────────────────────────────
     raw_text, ocr_conf = recognize_plate_parseq(
         plate_crop
@@ -332,13 +285,10 @@ def detect():
         })
 
     # ─────────────────────────────────────────
-    # CONFIDENCE SCORE
+    # CONFIDENCE
     # ─────────────────────────────────────────
     overall_conf = round(
-        (
-            yolo_conf * 0.40 +
-            ocr_conf * 0.60
-        ) * 100,
+        (yolo_conf * 0.40 + ocr_conf * 0.60) * 100,
         1
     )
 
@@ -351,9 +301,7 @@ def detect():
     # BOUNDING BOX
     # ─────────────────────────────────────────
     bbox = {
-
         'x': round((x1p / w) * 100, 1),
-
         'y': round((y1p / h) * 100, 1),
 
         'width': round(
@@ -414,9 +362,7 @@ def detect():
         thumbnail
     )
 
-    ts = time.strftime(
-        '%Y-%m-%d %H:%M:%S'
-    )
+    ts = time.strftime('%Y-%m-%d %H:%M:%S')
 
     print(
         f"[PlateVision] ✓ {raw_text} | "
@@ -490,10 +436,10 @@ if __name__ == '__main__':
         os.environ.get('PORT', 5000)
     )
 
-    print("=" * 60)
-    print(" PlateVision AI — Local PARSeq OCR")
-    print(f" Running at → http://localhost:{port}")
-    print("=" * 60)
+    print("=" * 55)
+    print(" PlateVision AI — PARSeq OCR Edition")
+    print(f" Open in browser → http://localhost:{port}")
+    print("=" * 55)
 
     app.run(
         host='0.0.0.0',
