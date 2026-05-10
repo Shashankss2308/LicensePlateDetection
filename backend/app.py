@@ -73,6 +73,7 @@ app = Flask(
     static_folder=FRONTEND_DIR,
     static_url_path=''
 )
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
 init_db()
 
@@ -240,6 +241,13 @@ def detect():
         })
 
     h, w = img_bgr.shape[:2]
+
+    if w > 1280:
+          scale = 1280 / w
+          img_bgr = cv2.resize(
+              image_bgr,
+              (int(w * scale), int(h * scale))
+          )
 
     # ─────────────────────────────────────────
     # YOLO DETECTION
