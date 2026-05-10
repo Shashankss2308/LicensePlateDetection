@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlateVision AI — License Plate Recognition</title>
+  <meta name="description"
+    content="PlateVision AI uses a custom-trained YOLO model to instantly detect and extract license plate text from any vehicle image." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- Animated Background -->
+  <div class="bg-scene">
+    <div class="grid-overlay"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="particles" id="particles"></div>
+  </div>
+
+  <div class="page-wrapper">
+
+    <!-- ===== HEADER ===== -->
+    <header class="site-header">
+      <div class="header-left">
+        <button class="sidebar-toggle-btn" id="sidebarToggle" title="Toggle Sidebar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="10" width="36" height="20" rx="4" stroke="url(#lg1)" stroke-width="2.5" />
+              <rect x="7" y="15" width="26" height="10" rx="2" fill="url(#lg1)" opacity="0.15" />
+              <text x="20" y="23.5" font-family="JetBrains Mono" font-size="7" fill="url(#lg1)" text-anchor="middle"
+                font-weight="700">ABC 123</text>
+              <circle cx="32" cy="8" r="3" fill="url(#lg2)" opacity="0.8" />
+              <circle cx="8" cy="8" r="3" fill="url(#lg2)" opacity="0.8" />
+              <circle cx="32" cy="32" r="3" fill="url(#lg2)" opacity="0.8" />
+              <circle cx="8" cy="32" r="3" fill="url(#lg2)" opacity="0.8" />
+              <defs>
+                <linearGradient id="lg1" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#00d4ff" />
+                  <stop offset="1" stop-color="#7b2ff7" />
+                </linearGradient>
+                <linearGradient id="lg2" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#00d4ff" />
+                  <stop offset="1" stop-color="#7b2ff7" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <span class="logo-text">Plate<span class="accent">Vision</span></span>
+        </div>
+      </div>
+      <div class="header-badge">
+        <span class="badge-dot"></span>
+        <span>ML Model Active</span>
+      </div>
+    </header>
+
+    <!-- ===== PAGE BODY (sidebar + content) ===== -->
+    <div class="page-body">
+
+      <!-- ===== LEFT SIDEBAR ===== -->
+      <aside class="sidebar" id="sidebar">
+
+        <!-- Navigation Tabs -->
+        <nav class="sidebar-nav">
+          <button class="nav-item active" id="navHistory" onclick="switchPanel('history')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+              <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+            <span>History</span>
+          </button>
+          <button class="nav-item" id="navAbout" onclick="switchPanel('about')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+              <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+            <span>About</span>
+          </button>
+        </nav>
+
+        <!-- ── History Panel ── -->
+        <div class="sidebar-panel" id="historyPanel">
+          <div class="panel-header">
+            <div class="panel-header-left">
+              <span class="panel-title">Scan History</span>
+              <span class="history-count-badge" id="historyCount">0</span>
+            </div>
+            <button class="btn-clear-all" id="clearAllBtn" onclick="clearAllHistory()">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              Clear All
+            </button>
+          </div>
+
+          <!-- History Items List -->
+          <div class="history-list" id="historyList"></div>
+
+          <!-- Empty State -->
+          <div class="history-empty" id="historyEmpty">
+            <div class="empty-icon">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="8" width="18" height="12" rx="3" stroke="currentColor" stroke-width="1.5"
+                  stroke-dasharray="3 2" />
+                <path d="M7 8V6a5 5 0 0110 0v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M10 13h4M12 11v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+            </div>
+            <p class="empty-title">No scans yet</p>
+            <p class="empty-sub">Upload a vehicle image to start scanning</p>
+          </div>
+        </div>
+
+        <!-- ── About Panel ── -->
+        <div class="sidebar-panel" id="aboutPanel" style="display:none;">
+          <div class="panel-header">
+            <span class="panel-title">About</span>
+          </div>
+
+          <div class="about-content">
+            <!-- Logo + Name -->
+            <div class="about-logo-wrap">
+              <div class="about-logo-icon">
+                <svg viewBox="0 0 48 48" fill="none" width="40" height="40">
+                  <rect x="2" y="12" width="44" height="24" rx="5" stroke="url(#abl)" stroke-width="2" />
+                  <rect x="8" y="18" width="32" height="12" rx="2.5" fill="url(#abl)" opacity="0.12" />
+                  <text x="24" y="27.5" font-family="JetBrains Mono" font-size="8" fill="url(#abl)" text-anchor="middle"
+                    font-weight="700">PLATE AI</text>
+                  <defs>
+                    <linearGradient id="abl" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#00d4ff" />
+                      <stop offset="1" stop-color="#7b2ff7" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+              <div>
+                <h3 class="about-app-name">PlateVision</h3>
+                <p class="about-version">v2.0 — Production Ready</p>
+              </div>
+            </div>
+
+            <p class="about-desc">
+              Advanced license plate recognition powered by a custom trained deep learning model. Detects plates in any
+              vehicle image and extracts text with remarkable accuracy.
+            </p>
+
+            <!-- How it works -->
+            <div class="about-section">
+              <h4 class="about-heading">How It Works</h4>
+              <div class="how-steps">
+                <div class="how-step">
+                  <div class="step-num">1</div>
+                  <div class="step-body">
+                    <div class="step-name">Upload Image</div>
+                    <div class="step-desc">Drag-drop or browse any vehicle photo</div>
+                  </div>
+                </div>
+                <div class="how-step">
+                  <div class="step-num">2</div>
+                  <div class="step-body">
+                    <div class="step-name">YOLO Detection</div>
+                    <div class="step-desc">ML model locates the plate region</div>
+                  </div>
+                </div>
+                <div class="how-step">
+                  <div class="step-num">3</div>
+                  <div class="step-body">
+                    <div class="step-name">OCR Extraction</div>
+                    <div class="step-desc">EasyOCR reads characters precisely</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tech Stack -->
+            <div class="about-section">
+              <h4 class="about-heading">Tech Stack</h4>
+              <div class="tech-badges">
+                <span class="tech-badge">YOLOv8</span>
+                <span class="tech-badge">EasyOCR</span>
+                <span class="tech-badge">Flask</span>
+                <span class="tech-badge">SQLite</span>
+                <span class="tech-badge">OpenCV</span>
+                <span class="tech-badge">Python</span>
+              </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="about-section">
+              <h4 class="about-heading">Tips for Best Results</h4>
+              <ul class="tips-list">
+                <li>Use clear, well-lit images</li>
+                <li>Front or rear view works best</li>
+                <li>Avoid extreme angles or blur</li>
+                <li>Higher resolution = better accuracy</li>
+              </ul>
+            </div>
+
+            <!-- Mini stats -->
+            <div class="about-stats-row">
+              <div class="about-stat">
+                <span class="about-stat-val">98.7<span class="about-stat-unit">%</span></span>
+                <span class="about-stat-lbl">Accuracy</span>
+              </div>
+              <div class="about-stat">
+                <span class="about-stat-val">&lt;1<span class="about-stat-unit">s</span></span>
+                <span class="about-stat-lbl">Speed</span>
+              </div>
+              <div class="about-stat">
+                <span class="about-stat-val">40<span class="about-stat-unit">+</span></span>
+                <span class="about-stat-lbl">Formats</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Overlay for mobile sidebar -->
+      <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+      <!-- ===== MAIN CONTENT ===== -->
+      <div class="main-content">
+
+        <!-- Hero -->
+        <section class="hero">
+          <div class="hero-tag">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Powered by Deep Learning
+          </div>
+          <h1 class="hero-title">
+            Read Any<br />
+            <span class="gradient-text animated-gradient">License Plate</span><br />
+            Instantly
+          </h1>
+          <p class="hero-subtitle">
+            Upload a vehicle image and our trained ML model will detect, isolate, and extract the license plate text
+            with remarkable precision.
+          </p>
+          <div class="hero-stats">
+            <div class="stat">
+              <span class="stat-value">98.7<span class="stat-unit">%</span></span>
+              <span class="stat-label">Accuracy</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+              <span class="stat-value">&lt;1<span class="stat-unit">s</span></span>
+              <span class="stat-label">Detection Time</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+              <span class="stat-value">40<span class="stat-unit">+</span></span>
+              <span class="stat-label">Plate Formats</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Recognition Card -->
+        <div class="main-container">
+          <div class="recognition-card" id="recognitionCard">
+
+            <!-- Upload Panel -->
+            <div class="upload-panel">
+              <div class="upload-zone" id="dropZone">
+                <input type="file" id="imageInput" accept="image/*" hidden />
+
+                <!-- Idle State -->
+                <div class="upload-idle" id="uploadIdle">
+                  <div class="upload-icon-wrapper">
+                    <div class="scan-ring scan-ring-1"></div>
+                    <div class="scan-ring scan-ring-2"></div>
+                    <div class="scan-ring scan-ring-3"></div>
+                    <div class="upload-icon">
+                      <svg viewBox="0 0 64 64" fill="none">
+                        <path
+                          d="M32 4C16.536 4 4 16.536 4 32C4 47.464 16.536 60 32 60C47.464 60 60 47.464 60 32C60 16.536 47.464 4 32 4Z"
+                          stroke="url(#u1)" stroke-width="2" stroke-dasharray="4 3" />
+                        <path d="M32 22V42M22 32H42" stroke="url(#u1)" stroke-width="3" stroke-linecap="round" />
+                        <defs>
+                          <linearGradient id="u1" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#00d4ff" />
+                            <stop offset="1" stop-color="#7b2ff7" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 class="upload-title">Drop Vehicle Image Here</h3>
+                  <p class="upload-desc">or click to browse from your device</p>
+                  <div class="upload-formats">
+                    <span>JPG</span><span>PNG</span><span>WEBP</span><span>BMP</span>
+                  </div>
+                  <button class="btn-upload" id="browseBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    Upload Image
+                  </button>
+                </div>
+
+                <!-- Preview State -->
+                <div class="upload-preview" id="uploadPreview" style="display:none;">
+                  <div class="preview-img-wrapper">
+                    <img id="previewImg" src="" alt="Vehicle Preview" />
+                    <div class="scan-overlay" id="scanOverlay" style="display:none;">
+                      <div class="scan-line"></div>
+                      <div class="corner-tl"></div>
+                      <div class="corner-tr"></div>
+                      <div class="corner-bl"></div>
+                      <div class="corner-br"></div>
+                      <div class="plate-box" id="plateBox" style="display:none;"></div>
+                    </div>
+                  </div>
+                  <div class="preview-actions">
+                    <button class="btn-detect" id="detectBtn">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" />
+                        <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      </svg>
+                      <span>Detect License Plate</span>
+                      <div class="btn-shimmer"></div>
+                    </button>
+                    <button class="btn-reset" id="resetBtn">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M3 12a9 9 0 101.57-5.14M3 3v5h5" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="card-divider">
+              <div class="divider-line"></div>
+              <div class="divider-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18l6-6-6-6" stroke="url(#dg)" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                  <defs>
+                    <linearGradient id="dg" x1="9" y1="6" x2="15" y2="18" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#00d4ff" />
+                      <stop offset="1" stop-color="#7b2ff7" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+              <div class="divider-line"></div>
+            </div>
+
+            <!-- Result Panel -->
+            <div class="result-panel" id="resultPanel">
+
+              <!-- Idle -->
+              <div class="result-idle" id="resultIdle">
+                <div class="result-idle-icon">
+                  <svg viewBox="0 0 80 80" fill="none" width="80" height="80">
+                    <rect x="10" y="26" width="60" height="28" rx="6" stroke="#ffffff15" stroke-width="2" />
+                    <rect x="18" y="34" width="44" height="12" rx="3" fill="#ffffff08" />
+                    <text x="40" y="43.5" font-family="JetBrains Mono" font-size="10" fill="#ffffff20"
+                      text-anchor="middle" font-weight="600">_ _ _ _ _ _</text>
+                  </svg>
+                </div>
+                <p class="result-idle-text">Detection results will appear here</p>
+                <p class="result-idle-sub">Upload an image and click detect to begin</p>
+              </div>
+
+              <!-- Processing -->
+              <div class="result-processing" id="resultProcessing" style="display:none;">
+                <div class="processing-orb">
+                  <div class="proc-ring proc-ring-1"></div>
+                  <div class="proc-ring proc-ring-2"></div>
+                  <div class="proc-ring proc-ring-3"></div>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+                      stroke="url(#pg)" stroke-width="2" stroke-linecap="round" />
+                    <defs>
+                      <linearGradient id="pg" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#00d4ff" />
+                        <stop offset="1" stop-color="#7b2ff7" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+                <p class="processing-text">Analyzing image with ML model...</p>
+                <div class="processing-steps">
+                  <div class="proc-step" id="step1">
+                    <div class="step-dot"></div><span>Preprocessing image</span>
+                  </div>
+                  <div class="proc-step" id="step2">
+                    <div class="step-dot"></div><span>Detecting plate region</span>
+                  </div>
+                  <div class="proc-step" id="step3">
+                    <div class="step-dot"></div><span>Extracting characters</span>
+                  </div>
+                  <div class="proc-step" id="step4">
+                    <div class="step-dot"></div><span>Finalizing result</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Output -->
+              <div class="result-output" id="resultOutput" style="display:none;">
+                <div class="result-header">
+                  <div class="result-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    </svg>
+                    Plate Detected
+                  </div>
+                  <div class="confidence-badge">
+                    <span id="confidenceValue">—</span>
+                    <span>Confidence</span>
+                  </div>
+                </div>
+
+                <div class="plate-display">
+                  <div class="plate-frame">
+                    <div class="plate-inner">
+                      <div class="plate-text" id="plateText">——</div>
+                    </div>
+                    <div class="plate-glow"></div>
+                  </div>
+                  <div class="plate-shine"></div>
+                </div>
+
+                <div class="result-details">
+                  <div class="detail-row">
+                    <div class="detail-item">
+                      <span class="detail-label">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2" />
+                          <path d="M9 9h6M9 12h6M9 15h4" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" />
+                        </svg>
+                        Raw Text
+                      </span>
+                      <span class="detail-value mono" id="rawText">—</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+                          <path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg>
+                        Process Time
+                      </span>
+                      <span class="detail-value mono" id="processTime">—</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="result-actions">
+                  <button class="btn-copy" id="copyBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2" />
+                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor"
+                        stroke-width="2" />
+                    </svg>
+                    Copy Text
+                  </button>
+                  <button class="btn-new" id="newBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    New Detection
+                  </button>
+                </div>
+              </div>
+
+              <!-- Error -->
+              <div class="result-error" id="resultError" style="display:none;">
+                <div class="error-icon">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="#ff4d6d" stroke-width="2" />
+                    <path d="M12 8v4M12 16h.01" stroke="#ff4d6d" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                </div>
+                <p class="error-title">Detection Failed</p>
+                <p class="error-desc" id="errorDesc">No license plate found. Try a clearer image.</p>
+                <button class="btn-retry" id="retryBtn">Try Again</button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Feature Strip -->
+          <div class="feature-strip">
+            <div class="feature-item">
+              <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="url(#fg1)" stroke-width="2" />
+                  <circle cx="12" cy="12" r="3" stroke="url(#fg1)" stroke-width="2" />
+                  <defs>
+                    <linearGradient id="fg1" x1="1" y1="4" x2="23" y2="20" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#00d4ff" />
+                      <stop offset="1" stop-color="#7b2ff7" />
+                    </linearGradient>
+                  </defs>
+                </svg></div>
+              <span>Real-time OCR</span>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="url(#fg2)" stroke-width="2"
+                    stroke-linejoin="round" />
+                  <defs>
+                    <linearGradient id="fg2" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#00d4ff" />
+                      <stop offset="1" stop-color="#7b2ff7" />
+                    </linearGradient>
+                  </defs>
+                </svg></div>
+              <span>ML-Powered</span>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="url(#fg3)" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                  <defs>
+                    <linearGradient id="fg3" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#00d4ff" />
+                      <stop offset="1" stop-color="#7b2ff7" />
+                    </linearGradient>
+                  </defs>
+                </svg></div>
+              <span>Sub-second Speed</span>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="url(#fg4)" stroke-width="2" />
+                  <path d="M12 6v6l4 2" stroke="url(#fg4)" stroke-width="2" stroke-linecap="round" />
+                  <defs>
+                    <linearGradient id="fg4" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#00d4ff" />
+                      <stop offset="1" stop-color="#7b2ff7" />
+                    </linearGradient>
+                  </defs>
+                </svg></div>
+              <span>History Tracking</span>
+            </div>
+          </div>
+        </div>
+
+        <footer class="site-footer">
+          <p>PlateVision AI &copy; 2026 &mdash; License Plate Recognition System &mdash; Built with Machine Learning</p>
+        </footer>
+
+      </div><!-- end main-content -->
+    </div><!-- end page-body -->
+  </div><!-- end page-wrapper -->
+
+  <script src="script.js"></script>
+</body>
+
+</html>
