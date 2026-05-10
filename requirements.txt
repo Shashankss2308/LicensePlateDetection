@@ -6,10 +6,9 @@ Pillow>=10.0.0
 gunicorn>=21.2.0
 waitress>=3.0.0
 
-torch>=2.0.0
-torchvision>=0.15.0
-timm~=0.9.16
-pytorch-lightning~=2.2.0
+torch==2.2.2
+torchvision==0.17.2
+
+timm==0.9.16
+pytorch-lightning==2.2.0
 nltk
-gradio ~=4.36.0
-gradio_client ~=4.1.0
