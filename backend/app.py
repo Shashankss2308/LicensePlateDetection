@@ -241,20 +241,16 @@ def detect():
         })
 
     h, w = img_bgr.shape[:2]
-
-    if w > 1280:
-          scale = 1280 / w
-          img_bgr = cv2.resize(
-              image_bgr,
-              (int(w * scale), int(h * scale))
-          )
-
+    
+    img_bgr = cv2.resize(img_bgr, (640, 640))
     # ─────────────────────────────────────────
     # YOLO DETECTION
     # ─────────────────────────────────────────
-    results = yolo(
-        img_bgr,
+    results = yolo.predict(
+        source=img_bgr,
+        imgsz=320,
         conf=0.25,
+        device="cpu",
         verbose=False
     )
 
